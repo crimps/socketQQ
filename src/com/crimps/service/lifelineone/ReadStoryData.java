@@ -1,6 +1,8 @@
 package com.crimps.service.lifelineone;
 
 
+import com.crimps.Main;
+import com.crimps.ui.MainUI;
 import com.crimps.utils.FileUtil;
 
 import java.io.File;
@@ -14,7 +16,7 @@ import static com.alibaba.fastjson.JSON.parse;
  * Created by crimps on 2017/6/14.
  */
 public class ReadStoryData {
-    private static final String FILE_DIR = "data";
+    private static final String FILE_DIR = MainUI.rootPath + "resources/lifelineonedata";
     private static final String FILE_SCENES = FILE_DIR + File.separator + "scenes_cn.json";
     private static final String FILE_CHOICES = FILE_DIR + File.separator + "choices_cn.json";
     private static final String FILE_PROCESS = FILE_DIR + File.separator + "GameProgress.json";
@@ -22,6 +24,7 @@ public class ReadStoryData {
 
     public static final String PROCESS_BLOCK = "gameBlock"; //游戏当前进度区块
     public static final String PROCESS_TIME = "time"; //游戏当前进度到达区块时间
+    public static final String PROCESS_CHOICE = "choice"; //游戏当前进度选择区块
     private static final String CHOICE_ID = "identifier";
     private static final String CHOICE_ACTION = "actions";
     private static final String CHOICE_CONTENT = "choice";

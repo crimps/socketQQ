@@ -1,7 +1,6 @@
 package com.crimps.service.lifelineone;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -9,183 +8,156 @@ import java.util.regex.Pattern;
  * Created by crimps on 2017/6/16.
  */
 public class ScenesProcess {
+    private static final String IF = "<<if";
+    private static final String ELSE = "<<else";
+    private static final String ENDIF = "<<endif";
+    public static final String RESULT_TYPE_KEY = "TYPE";
+    public static final String RESULT_TYPE_VALUE = "VALUE";
+    public static final String RESULT_CONTENT_KEY = "CONTENTS";
+    public static final String RESULT_SCENES = "SCENES";
+    public static final String RESULT_CHOIC = "CHOIC";
+
     /**
      * 场景逻辑处理
+     *
      * @param scenesList 场景内容列表
      * @return
      */
-    public static String processScenes(List<String> scenesList) {
+    public static Map<String, Object> processScenes(List<String> scenesList) {
         StringBuffer sb = new StringBuffer("");
         //场景逻辑处理
-        List<String> logicedList = logicProcess(scenesList);
-        //场景参数设置
-
-        return sb.toString();
+        return logicProcess(scenesList);
     }
 
     /**
-     * 是否IF逻辑开始
-     * @param content
-     * @return
+     * 逻辑处理模块
+     *
+     * @param scenesList
      */
-    private static boolean isIFStart(String content) {
-        if (content.contains("<<if")) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * 是否IF逻辑结束
-     * @param content
-     * @return
-     */
-    private static boolean isIFEnd(String content) {
-        if (content.contains("<<endif>>")) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * 场景逻辑处理
-     * @param scenesList 场景列表
-     * @return
-     */
-    private static List<String> logicProcess(List<String> scenesList) {
-        List<String> logicedScenesList = new ArrayList<String>();
-        boolean inFlag = false;
-        List<String> ifList = new ArrayList<String>();
-        for (String scene : scenesList) {
-            if (isIFStart(scene)) {
-                inFlag = true;
+    private static Map<String, Object> logicProcess(List<String> scenesList) {
+        Map<String, Object> resultMap = new HashMap<>();
+        List<String> contentList = new ArrayList<>();
+        boolean ifelse = false;
+        boolean skipline = false;
+        for (String scenes : scenesList) {
+            //处理 if else endif
+            if (ifelse) {
+                if (scenes.contains(ELSE)) {
+                    skipline = !skipline;
+                    continue;
+                } else if (scenes.contains(ENDIF)) {
+                    ifelse = false;
+                    continue;
+                }
+                if (skipline) {
+                    continue;
+                }
             }
-            if (isIFEnd(scene)) {
-                ifList.add(scene);
-                processIF(scenesList, ifList);
-                ifList.clear();
-                inFlag = false;
+
+            if (scenes.contains(IF)) {
+                ifelse = true;
+                skipline = !execIf(scenes);
+            } else if (scenes.contains("<<set")) {
+                //设置参数
+                setParam(scenes);
                 continue;
-            }
-            if (inFlag) {
-                ifList.add(scene);
+            } else if (scenes.contains("[[")) {
+                //跳转场景,不作延时
+                resultMap.put(RESULT_TYPE_KEY, RESULT_SCENES);
+                resultMap.put(RESULT_CONTENT_KEY, contentList);
+                if (scenes.contains("[[delay")) {
+                    resultMap.put(RESULT_TYPE_VALUE, scenes.split("\\|")[1].replace("]]", ""));
+                } else {
+                    resultMap.put(RESULT_TYPE_VALUE, scenes.replace("[[", "").replace("]]", ""));
+                }
+                return resultMap;
+            } else if (scenes.contains("<<category")) {
+                //进入选择
+                resultMap.put(RESULT_TYPE_KEY, RESULT_CHOIC);
+                resultMap.put(RESULT_TYPE_VALUE, scenes.replace("<<category", "").replace(">>", ""));
+                resultMap.put(RESULT_CONTENT_KEY, contentList);
+                return resultMap;
             } else {
-                logicedScenesList.add(scene);
+                contentList.add(scenes);
             }
         }
-        return logicedScenesList;
+        resultMap.put(RESULT_TYPE_KEY, null);
+        resultMap.put(RESULT_CONTENT_KEY, contentList);
+        return resultMap;
     }
 
     /**
-     * IF逻辑处理
-     * @param ifList
-     * @return
+     * 判断if条件
+     *
+     * @param scenes if条件语句
+     * @return true:flase
      */
-    private static List<String> processIF(List<String> List, List<String> ifList) {
-        List<String> ifLogicedList = new ArrayList<String>();
-        for (String scene : ifList) {
-            matchIf(scene);
-            matchElseIf(scene);
-            matchELSE(scene);
+    private static boolean execIf(String scenes) {
+        if (scenes.contains(" and ")) {
+            String[] andScene = scenes.split("and");
+            return execIfSingle(andScene[0]) && execIfSingle(andScene[1]);
+        } else if (scenes.contains(" or ")) {
+            String[] orScenes = scenes.split("or");
+            return execIfSingle(orScenes[0]) || execIfSingle(orScenes[1]);
+        } else {
+            return execIfSingle(scenes);
         }
-        return ifLogicedList;
     }
 
     /**
-     * 匹配IF语句
-     * @param content
-     * @return
+     * 执行单个判断语句
+     * @param ifscenes 判断语句
+     * @return treu:false
      */
-    private static String matchIf(String content) {
-        String re1="(<)";	// Any Single Character 1
-        String re2="(<)";	// Any Single Character 2
-        String re3="(if)";	// Word 1
-        String re4="( )";	// White Space 1
-        String re5="(\\$)";	// Any Single Character 3
-        String re6="((?:[a-z][a-z]+))";	// Word 2
-        String re7="( )";	// White Space 2
-        String re8="((?:[a-z][a-z]+))";	// Word 3
-        String re9="( )";	// White Space 3
-        String re10="((?:[A-Za-z0-9]+))";	// Word 4
-        String re11="(>)";	// Any Single Character 4
-        String re12="(>)";	// Any Single Character 5
+    private static boolean execIfSingle(String ifscenes) {
+        String key;
+        String opt;
+        String value;
 
-        Pattern p = Pattern.compile(re1+re2+re3+re4+re5+re6+re7+re8+re9+re10+re11+re12,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        Matcher m = p.matcher(content);
+        String re1 = "(\\$)";    // Any Single Character 1
+        String re2 = "((?:[a-z][a-z0-9_]*))";    // Variable Name 1
+        String re3 = "( )";    // Any Single Character 2
+        String re4 = "((?:[a-z][a-z0-9_]*))";    // Variable Name 2
+        String re5 = ".*?";    // Non-greedy match on filler
+        String re6 = "((?:[a-z][a-z0-9_]*))";    // Variable Name 3
+
+        Pattern p = Pattern.compile(re1 + re2 + re3 + re4 + re5 + re6, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher m = p.matcher(ifscenes);
         if (m.find()) {
             String c1 = m.group(1);
-            String c2 = m.group(2);
-            String word1 = m.group(3);
-            String ws1 = m.group(4);
-            String c3 = m.group(5);
-            String word2 = m.group(6);
-            String ws2 = m.group(7);
-            String word3 = m.group(8);
-            String ws3 = m.group(9);
-            String word4 = m.group(10);
-            String c4 = m.group(11);
-            String c5 = m.group(12);
-            System.out.print("(" + c1.toString() + ")" + "(" + c2.toString() + ")" + "(" + word1.toString() + ")" + "(" + ws1.toString() + ")" + "(" + c3.toString() + ")" + "(" + word2.toString() + ")" + "(" + ws2.toString() + ")" + "(" + word3.toString() + ")" + "(" + ws3.toString() + ")" + "(" + word4.toString() + ")" + "(" + c4.toString() + ")" + "(" + c5.toString() + ")" + "\n");
-            return m.group(6);
-        } else {
-            return null;
+            key = m.group(2);
+            String c2 = m.group(3);
+            opt = m.group(4);
+            value = m.group(5);
+//            System.out.print("(" + c1.toString() + ")" + "(" + var1.toString() + ")" + "(" + c2.toString() + ")" + "(" + var2.toString() + ")" + "(" + var3.toString() + ")" + "\n");
+            if ("is".equals(opt)) {
+                if (value.equals(ReadStoryData.readGameParameter().get(key).toString())) {
+                    return true;
+                }else {
+                    return false;
+                }
+            } else if ("gte".equals(opt)) {
+                if (Integer.valueOf(ReadStoryData.readGameParameter().get(key).toString()) >= Integer.valueOf(value)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }else {
+            return false;
         }
     }
 
     /**
-     * 匹配ELSEIF语句
-     * @param content
-     * @return
+     * 设置参数
+     *
+     * @param scenes 设置参数语句
      */
-    private static String matchElseIf(String content) {
-        String re1="(<)";	// Any Single Character 1
-        String re2="(<)";	// Any Single Character 2
-        String re3="(elseif)";	// Word 1
-        String re4="( )";	// White Space 1
-        String re5="(\\$)";	// Any Single Character 3
-        String re6="((?:[a-z][a-z]+))";	// Word 2
-        String re7="( )";	// White Space 2
-        String re8="((?:[a-z][a-z]+))";	// Word 3
-        String re9="( )";	// White Space 3
-        String re10="((?:[a-z][a-z]+))";	// Word 4
-        String re11="(>)";	// Any Single Character 4
-        String re12="(>)";	// Any Single Character 5
+    private static void setParam(String scenes) {
 
-        Pattern p = Pattern.compile(re1+re2+re3+re4+re5+re6+re7+re8+re9+re10+re11+re12,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        Matcher m = p.matcher(content);
-        if (m.find()) {
-            String c1 = m.group(1);
-            String c2 = m.group(2);
-            String word1 = m.group(3);
-            String ws1 = m.group(4);
-            String c3 = m.group(5);
-            String word2 = m.group(6);
-            String ws2 = m.group(7);
-            String word3 = m.group(8);
-            String ws3 = m.group(9);
-            String word4 = m.group(10);
-            String c4 = m.group(11);
-            String c5 = m.group(12);
-            System.out.print("(" + c1.toString() + ")" + "(" + c2.toString() + ")" + "(" + word1.toString() + ")" + "(" + ws1.toString() + ")" + "(" + c3.toString() + ")" + "(" + word2.toString() + ")" + "(" + ws2.toString() + ")" + "(" + word3.toString() + ")" + "(" + ws3.toString() + ")" + "(" + word4.toString() + ")" + "(" + c4.toString() + ")" + "(" + c5.toString() + ")" + "\n");
-            return m.group(5);
-        } else {
-            return null;
-        }
     }
 
-    /**
-     * 匹配ELSE
-     * @param content
-     * @return
-     */
-    private static String matchELSE(String content) {
-        if (content.contains("<<else>>")) {
-            System.out.println(content);
-            return "df";
-        } else {
-            return null;
-        }
-    }
+
 }

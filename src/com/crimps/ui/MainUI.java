@@ -1,6 +1,6 @@
 package com.crimps.ui;
 
-import com.alibaba.fastjson.JSON;
+import com.crimps.service.lifelineone.LifeLine;
 import com.crimps.service.socket.QQClinet;
 
 import javax.swing.*;
@@ -72,6 +72,9 @@ public class MainUI extends JFrame{
     private void initFuns() {
         LogPanel logPanel = new LogPanel(getMainUI());
         funPanelMap.put("log", logPanel);
+        LifeLine lifeLine = new LifeLine();
+//        lifeLine.process("launch");
+        lifeLine.choice("“准备得最不充分”？");
     }
 
     /**
