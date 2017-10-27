@@ -1,5 +1,7 @@
 package com.crimps.service.lifelineone;
 
+import com.alibaba.fastjson.JSON;
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -156,8 +158,57 @@ public class ScenesProcess {
      * @param scenes 设置参数语句
      */
     private static void setParam(String scenes) {
+        if (scenes.contains("- 1")) {
+            String re1="(\\$)";	// Any Single Character 1
+            String re2="((?:[a-z][a-z0-9_]*))";	// Variable Name 1
+            String re3="( )";	// Any Single Character 2
+            String re4="(=)";	// Any Single Character 3
+            String re5="( )";	// Any Single Character 4
+            String re6="(\\$)";	// Any Single Character 5
+            String re7="((?:[a-z][a-z0-9_]*))";	// Variable Name 2
+            String re8=".*?";	// Non-greedy match on filler
+            String re9="(\\d+)";	// Integer Number 1
 
+            Pattern p = Pattern.compile(re1+re2+re3+re4+re5+re6+re7+re8+re9,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+            Matcher m = p.matcher(scenes);
+            if (m.find())
+            {
+                String c1=m.group(1);
+                String var1=m.group(2);
+                String c2=m.group(3);
+                String c3=m.group(4);
+                String c4=m.group(5);
+                String c5=m.group(6);
+                String var2=m.group(7);
+                String int1=m.group(8);
+                System.out.print("("+c1.toString()+")"+"("+var1.toString()+")"+"("+c2.toString()+")"+"("+c3.toString()+")"+"("+c4.toString()+")"+"("+c5.toString()+")"+"("+var2.toString()+")"+"("+int1.toString()+")"+"\n");
+                Map<String, String> gameParamMap = ReadStoryData.readGameParameter();
+                int value = Integer.valueOf(gameParamMap.get(var1).toString()) - 1;
+                gameParamMap.put(var1, String.valueOf(value));
+            }
+        } else {
+            String re1="(\\$)";	// Any Single Character 1
+            String re2="((?:[a-z][a-z0-9_]*))";	// Variable Name 1
+            String re3="( )";	// Any Single Character 2
+            String re4="(=)";	// Any Single Character 3
+            String re5="( )";	// Any Single Character 4
+            String re6="((?:[a-z][a-z0-9_]*))";	// Variable Name 2
+
+            Pattern p = Pattern.compile(re1+re2+re3+re4+re5+re6,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+            Matcher m = p.matcher(scenes);
+            if (m.find())
+            {
+                String c1=m.group(1);
+                String var1=m.group(2);
+                String c2=m.group(3);
+                String c3=m.group(4);
+                String c4=m.group(5);
+                String var2=m.group(6);
+                System.out.print("("+c1.toString()+")"+"("+var1.toString()+")"+"("+c2.toString()+")"+"("+c3.toString()+")"+"("+c4.toString()+")"+"("+var2.toString()+")"+"\n");
+                Map<String, String> gameParamMap = ReadStoryData.readGameParameter();
+                gameParamMap.put(var1, var2);
+                ReadStoryData.writeGameParameter(JSON.toJSONString(gameParamMap));
+            }
+        }
     }
-
-
 }
